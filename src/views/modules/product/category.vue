@@ -1,35 +1,49 @@
 <!--  -->
 <template>
-  <el-tree
-    :data="menus"
-    :props="defaultProps"
-    :expand-on-click-node="false"
-    show-checkbox
-    node-key="catId"
-    :default-checked-keys="expandedKey"
-  >
-    <span class="custom-tree-node" slot-scope="{ node, data }">
-      <span>{{ node.label }}</span>
-      <span>
-        <el-button
-          v-if="node.level <= 2"
-          type="text"
-          size="mini"
-          @click="() => append(data)"
-        >
-          Append
-        </el-button>
-        <el-button
-          v-if="node.childNodes.length == 0"
-          type="text"
-          size="mini"
-          @click="() => remove(node, data)"
-        >
-          Delete
-        </el-button>
+  <div>
+    <el-tree
+      :data="menus"
+      :props="defaultProps"
+      :expand-on-click-node="false"
+      show-checkbox
+      node-key="catId"
+      :default-checked-keys="expandedKey"
+    >
+      <span class="custom-tree-node" slot-scope="{ node, data }">
+        <span>{{ node.label }}</span>
+        <span>
+          <el-button
+            v-if="node.level <= 2"
+            type="text"
+            size="mini"
+            @click="() => append(data)"
+          >
+            Append
+          </el-button>
+          <el-button
+            v-if="node.childNodes.length == 0"
+            type="text"
+            size="mini"
+            @click="() => remove(node, data)"
+          >
+            Delete
+          </el-button>
+        </span>
       </span>
-    </span>
-  </el-tree>
+    </el-tree>
+    <el-dialog title="添加分类" :visible.sync="dialogVisible" width="30%">
+      <el-form :model="category">
+        <el-form-item label="分类名称">
+          <el-input v-model="category.name" autocomplete="off"></el-input>
+        </el-form-item>
+      </el-form>
+
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="dialogVisible = false">取 消</el-button>
+        <el-button type="primary" @click="addCategory">确 定</el-button>
+      </span>
+    </el-dialog>
+  </div>
 </template>
 
 <script>
@@ -41,8 +55,12 @@ export default {
   components: {},
   data() {
     return {
+      //表单的值
+      category: { name: "", parentCid: 0, catLevel: 0, showStatus: 1, sort: 0 },
+      //是否可见
+      dialogVisible: false,
       menus: [],
-      expandedKey:[],
+      expandedKey: [],
       defaultProps: {
         children: "children",
         label: "name",
@@ -59,8 +77,38 @@ export default {
         this.menus = data.data;
       });
     },
+
+     //添加三级分类
+    addCategory() {
+      //点击添加分类,  关闭表单
+      this.dialogVisible = false;
+      console.log("提交的表单数据:  ", this.category);
+
+      this.$http({
+        url: this.$http.adornUrl("/product/category/save"),
+        method: "post",
+        data: this.$http.adornData(this.category, false),
+      }).then(({ data }) => {
+        //添加成功后的操作
+        this.$message({
+          type: "success",
+          message: "分类添加成功!",
+        });
+        this.dialogVisible = false;
+        this.getMenus();
+        this.expandedkey = [this.category.parentCid];
+        this.category.name = "";
+      });
+    },
+
     append(data) {
-      console.log("append", data);
+      //点击 append 弹出添加分类的对话框
+      this.dialogVisible = true;
+      //父级的id
+      this.category.parentCid = data.catId;
+      //分类的层级, 当前层级, 加一
+      this.category.catLevel = data.catLevel * 1 + 1;
+      //console.log("append", data);
     },
 
     remove(node, data) {
@@ -78,7 +126,6 @@ export default {
             method: "post",
             data: this.$http.adornData(idArr, false),
           }).then(({ data }) => {
-            
             this.$message({
               type: "success",
               message: "删除成功!",
@@ -86,7 +133,7 @@ export default {
             //刷新出新的菜单
             this.getMenus();
             //设置需要默认展开的菜单
-            this.expandedKey =[node.parent.data.catId]
+            this.expandedKey = [node.parent.data.catId];
           });
         })
         .catch(() => {});
