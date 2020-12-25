@@ -6,6 +6,7 @@
     :expand-on-click-node="false"
     show-checkbox
     node-key="catId"
+    :default-checked-keys="expandedKey"
   >
     <span class="custom-tree-node" slot-scope="{ node, data }">
       <span>{{ node.label }}</span>
@@ -41,6 +42,7 @@ export default {
   data() {
     return {
       menus: [],
+      expandedKey:[],
       defaultProps: {
         children: "children",
         label: "name",
@@ -58,18 +60,37 @@ export default {
       });
     },
     append(data) {
-      const newChild = { id: id++, label: "testtest", children: [] };
-      if (!data.children) {
-        this.$set(data, "children", []);
-      }
-      data.children.push(newChild);
+      console.log("append", data);
     },
 
     remove(node, data) {
-      const parent = node.parent;
-      const children = parent.data.children || parent.data;
-      const index = children.findIndex((d) => d.id === data.id);
-      children.splice(index, 1);
+      var ids = [data.catId];
+      //删除弹窗实现
+      this.$confirm(`是否删除 [ ${data.name} ] 菜单?`, "提示", {
+        confirmButtonText: "确定", // 点击确定, 触发then
+        cancelButtonText: "取消", // 点击取消 触发 catch ,由于取消不需要任何的操作, 但删除catch会报错, 因此保留空方法
+        type: "warning",
+      })
+        .then(() => {
+          var idArr = [data.catId];
+          this.$http({
+            url: this.$http.adornUrl("/product/category/delete"),
+            method: "post",
+            data: this.$http.adornData(idArr, false),
+          }).then(({ data }) => {
+            
+            this.$message({
+              type: "success",
+              message: "删除成功!",
+            });
+            //刷新出新的菜单
+            this.getMenus();
+            //设置需要默认展开的菜单
+            this.expandedKey =[node.parent.data.catId]
+          });
+        })
+        .catch(() => {});
+      console.log("remove", node, data);
     },
   },
   //计算属性 类似于data概念
